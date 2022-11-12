@@ -1,8 +1,13 @@
 import {useNavigation} from '@react-navigation/native';
-import React, {memo, useEffect} from 'react';
+import React, {memo, useEffect, useMemo, useRef} from 'react';
 import {useCallback} from 'react';
 import {FlatList, View} from 'react-native';
 import {Button, Card, TextInput, IconButton, Text} from 'react-native-paper';
+import {
+  useDeviceOrientation,
+  useDimensions,
+} from '@react-native-community/hooks';
+import Container from '../components/Container/Container';
 import FieldTypeSelector from '../components/FieldTypeSelector/FieldTypeSelector';
 import TitleFieldSelector from '../components/TitleFieldSelector/TitleFieldSelector';
 import {useAppDispatch, useAppSelector} from '../store/hooks';
@@ -16,7 +21,12 @@ import {
   selectCategories,
   updateCategoryName,
 } from '../store/slices/categories';
+import {
+  generateMachineField,
+  removeMachineField,
+} from '../store/slices/machines';
 import {Attribute, Category, FieldChangeParams} from '../types/types';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 interface RenderFieldParams {
   field: Attribute;
@@ -29,6 +39,16 @@ const ManagerCategories = memo(() => {
   const dispatch = useAppDispatch();
   const categories = useAppSelector(selectCategories);
   const totalCategories = categories.length;
+  const orientation = useDeviceOrientation();
+  const {left, right} = useSafeAreaInsets();
+  const dimension = useDimensions();
+  const categoryList = useRef<FlatList>(null);
+  const isTwoColumn = dimension.window.width > 400;
+
+  const containerWidth = useMemo(() => {
+    if (isTwoColumn) return (dimension.window.width - left - right - 20) / 2;
+    return '100%';
+  }, [orientation, dimension, left, right, isTwoColumn]);
 
   const onAttributeLabelChange = useCallback((params: FieldChangeParams) => {
     dispatch(onAttributeNameChange(params));
@@ -41,13 +61,23 @@ const ManagerCategories = memo(() => {
   const removeField = useCallback(
     (categoryIndex: number, fieldIndex: number) => {
       dispatch(removeAttribute({categoryIndex, attributeIndex: fieldIndex}));
+      dispatch(
+        removeMachineField({
+          category: categories[categoryIndex],
+          field: categories[categoryIndex].attributes[fieldIndex],
+        }),
+      );
     },
-    [],
+    [categories],
   );
 
-  const addField = useCallback((index: number, field: Attribute) => {
-    dispatch(addAttribute({categoryIndex: index, attribute: field}));
-  }, []);
+  const addField = useCallback(
+    (index: number, field: Attribute) => {
+      dispatch(addAttribute({categoryIndex: index, attribute: field}));
+      dispatch(generateMachineField({category: categories[index], field}));
+    },
+    [categories],
+  );
 
   const onCategoryRemove = useCallback((index: number) => {
     dispatch(removeCategory(index));
@@ -69,10 +99,13 @@ const ManagerCategories = memo(() => {
             type: 'string',
             title: 'field',
             isTitleField: true,
+            fieldId: `field${new Date().getTime()}`,
           },
         ],
       }),
     );
+
+    setTimeout(() => categoryList.current?.scrollToEnd(), 500);
   }, [totalCategories]);
 
   const newCategoryButton = useCallback(() => {
@@ -81,13 +114,14 @@ const ManagerCategories = memo(() => {
         Add
       </Button>
     );
-  }, []);
+  }, [totalCategories]);
 
   const renderField = useCallback(
     (params: RenderFieldParams) => {
       const {attributeIndex, categoryIndex, field} = params;
       return (
         <View
+          key={`field-${categoryIndex}-${attributeIndex}`}
           style={{
             marginBottom: 16,
             flexDirection: 'row',
@@ -123,7 +157,7 @@ const ManagerCategories = memo(() => {
     ({item, index}: {item: Category; index: number}) => {
       const {name, attributes} = item;
       return (
-        <Card style={{marginBottom: 10}}>
+        <Card style={{marginBottom: 10, width: containerWidth}}>
           <Card.Title
             title={item.name}
             right={() => (
@@ -170,14 +204,27 @@ const ManagerCategories = memo(() => {
   }, [totalCategories]);
 
   return (
-    <View style={{padding: 10}}>
+    <Container
+      style={{
+        paddingVertical: 10,
+        paddingHorizontal: 10,
+      }}>
       <FlatList
+        ref={categoryList}
         data={categories}
         renderItem={renderCategory}
-        keyExtractor={(item, index) => `catehory-${index}`}
+        keyExtractor={(item, index) => `category-${index}`}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={{paddingTop: 20}}>
+            <Text style={{textAlign: 'center', color: '#aaa'}}>
+              No Categories added yet
+            </Text>
+          </View>
+        }
+        numColumns={isTwoColumn ? 2 : 1}
       />
-    </View>
+    </Container>
   );
 });
 

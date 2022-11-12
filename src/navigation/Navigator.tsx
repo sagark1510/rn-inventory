@@ -17,7 +17,6 @@ const Navigator = memo(() => {
   return (
     <NavigationContainer>
       <Drawer.Navigator>
-        <Drawer.Screen name="Manage Categories" component={Home} />
         <Drawer.Screen name="Dashboard" component={renderList(-1)} />
         {categories.map(({name}, index) => (
           <Drawer.Screen
@@ -26,6 +25,7 @@ const Navigator = memo(() => {
             component={renderList(index)}
           />
         ))}
+        <Drawer.Screen name="Manage Categories" component={Home} />
       </Drawer.Navigator>
     </NavigationContainer>
   );

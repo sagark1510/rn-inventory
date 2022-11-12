@@ -18,6 +18,7 @@ const FieldTypeSelector: React.FC<IProps> = memo(props => {
     const field: Attribute = {
       title: 'Field',
       type,
+      fieldId: `field${new Date().getTime()}`,
     };
     onFieldTypeSelected(field);
   };

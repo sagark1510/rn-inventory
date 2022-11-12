@@ -16,7 +16,10 @@ export const categorySlice = createSlice({
   initialState,
   reducers: {
     addCategory: (state, action: PayloadAction<Category>) => {
-      state.list = [...state.list, action.payload];
+      state.list = [
+        ...state.list,
+        {...action.payload, id: `category${new Date().getTime()}`},
+      ];
     },
     removeCategory: (state, action: PayloadAction<number>) => {
       state.list = state.list.filter((_, index) => index !== action.payload);
@@ -44,7 +47,7 @@ export const categorySlice = createSlice({
         if (index === attributeIndex) wasTitleField = !!attribute.isTitleField;
         return index !== attributeIndex;
       });
-      if (wasTitleField)
+      if (wasTitleField && state.list[categoryIndex].attributes.length)
         state.list[categoryIndex].attributes[0].isTitleField = true;
     },
     updateCategoryName: (
